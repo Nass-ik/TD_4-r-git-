@@ -163,3 +163,26 @@ df_long |>
   arrange(desc(moyenne))
 ```
 
+8. Visualiser le résultat de la question précédente sous forme de graphique. Adapter le graphique 
+pour afficher l’affluence moyenne par tranche horaire. Quelle est votre analyse ?
+```{r}
+library(ggplot2)
+df_graph <- df_long |> 
+  group_by(heure) |> 
+  summarise(moyenne = mean(passages, na.rm = TRUE))
+
+# 2. Création du graphique
+ggplot(df_graph, aes(x = heure, y = moyenne)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  geom_line(color = "darkblue", size = 1) +
+  scale_x_continuous(breaks = 0:23) + 
+  labs(
+    title = "Affluence moyenne des cyclistes par heure",
+    subtitle = "Source : Open Data Nantes Métropole - Échantillon Mai 2025",
+    x = "Heure de la journée (0-23h)",
+    y = "Nombre moyen de passages",
+    caption = "Données nettoyées (anomalies exclues)"
+  ) +
+  theme_minimal()
+```
+
