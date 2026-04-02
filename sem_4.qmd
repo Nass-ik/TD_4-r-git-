@@ -1,0 +1,67 @@
+---
+title: "Exercices - 4"
+format: html
+embed-resources: true
+theme: none
+---
+
+## Préparation
+
+1. Vérifiez que les options globales de RStudio sont conformes aux options recommandées dans le cours.
+
+2. Créez un projet RStudio intitulé `cours_r_partie_4`. Ce projet sera créé vide. Nous initialiserons un projet git en cochant la case adéquate.
+
+## Exercice
+
+Pour cet exercice, nous allons utiliser le même jeu de données issu de [https://data.nantesmetropole.fr/](https://data.nantesmetropole.fr/). L'objectif de cet exercice est de mettre en pratique les librairies découvertes aujourd'hui. Comme lors de la partie 3, n'hésitez pas à réaliser un `commit` après chaque résolution de question, et à `push` régulièrement sur le répertoire distant.
+
+1. Requêter l'**ensemble** du [jeu de données compagnon](https://data.nantesmetropole.fr/explore/dataset/244400404_comptages-velo-nantes-metropole-boucles-comptage/information/) à l'aide d'`httr2` (sans télécharger le `csv`). Ce jeu contient des informations complémentaires sur chaque boucle. Importer ce jeu de données sous le nom `df_velo_info`. La requête renvoie par défaut le 20 premières lignes uniquement, modifier la _query_ pour obtenir l'ensemble du jeu de données (76 lignes).
+
+```{r}
+library(httr2)
+
+req <- request("https://data.nantesmetropole.fr/api/explore/v2.1/catalog/datasets/") |>
+    req_url_path_append("244400404_comptages-velo-nantes-metropole-boucles-comptage/records") |>
+    req_url_query(limit= 100)
+
+resp <- req_perform(req)  |> resp_body_json(simplifyVector = TRUE)
+df_velo_info  <- resp$results
+```
+
+2. Requêter une **sous-partie** du [jeu de données principal](https://data.nantesmetropole.fr/explore/dataset/244400404_comptages-velo-nantes-metropole/information/) à l'aide d'`httr2` (sans télécharger le `csv`). Limiter la sélection aux **deux directions d'une même boucle** (e.g. `880` et `881` pour _Madeleine vers nord_ et _Madeleine vers sud_) et **un mois** (e.g. `"2025-09"`) via le paramètre de _query_ **refine** (cf. [doc API](https://data.nantesmetropole.fr/explore/dataset/244400404_comptages-velo-nantes-metropole-boucles-comptage/api/)). Importer ce jeu de données sous le nom `df_velo_sample`. Vérifier que votre jeu de données comporte le nombre de lignes attendu.
+
+```{r}
+req <- request("https://data.nantesmetropole.fr/api/explore/v2.1/catalog/datasets/") |>
+    req_url_path_append("244400404_comptages-velo-nantes-metropole/records") |>
+    req_url_query(limit= 100, refine = "boucle_num:880", refine = "boucle_num:881", refine = "jour:'2025-05'")
+
+resp <- req_perform(req)  |> resp_body_json(simplifyVector = TRUE)
+df_velo_sample  <- resp$results
+```
+
+3. Réaliser une jointure entre les jeux de données df_velo et df_velo_info. Avec la fonction 
+write.csv, sauvegardez le jeu de données obtenu au format csv dans un sousdossier /data. 
+Dans le fichier .gitignore, ajoutez la ligne data/ puis sauvegardez. À quoi sert cette étape ?
+
+```{r}
+library(dplyr)
+
+# Jointure en utilisant 'boucle_num' comme clé commune
+df_final <- df_velo_sample %>%
+  left_join(df_velo_info, by = "boucle_num")
+```
+
+```{r}
+# Créer le dossier data s'il n'existe pas encore
+if (!dir.exists("data")) {
+  dir.create("data")
+}
+
+# Sauvegarde au format CSV
+write.csv(df_final, "data/df_velo_complet.csv", row.names = FALSE)
+```
+
+```{r}
+glimpse(df_final)
+```
+
