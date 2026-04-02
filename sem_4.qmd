@@ -89,6 +89,77 @@ df_velo_clean <- df_velo |>
 nrow(df_velo_clean)
 ```
 
+5. Créer une nouvelle colonne mois qui indique le mois de la mesure en toute lettre (janvier, 
+février etc). Calculer le nombre de trajets par mois.
+```{r}
+library(lubridate)
+library(dplyr)
 
+# 1. Création de la colonne mois 
+df_velo_clean <- df_velo_clean |> 
+  mutate(
+    date_temp = as.Date(jour),
+    mois = month(date_temp, label = TRUE, abbr = FALSE)
+  )
 
+# 2. Calcul du nombre de trajets par mois
+suivi_mensuel <- df_velo_clean |> 
+  group_by(mois) |> 
+  summarise(
+    nombre_total_trajets = sum(total, na.rm = TRUE),
+    nombre_de_jours_mesures = n()
+  )
+
+# Affichage du résultat
+print(suivi_mensuel)
+```
+
+6. Quelles sont les heures de la journée avec le plus de trajet en moyenne ? Pour répondre à 
+cette question, vous pouvez dans un premier temps pivoter le data.frame pour obtenir une 
+seule colonne heure
+```{r}
+library(tidyr)
+library(dplyr)
+
+df_long <- df_velo_clean |> 
+  pivot_longer(
+    cols = starts_with("X"), 
+    names_to = "heure",      
+    values_to = "passages"   
+  ) |> 
+  mutate(
+    heure = as.numeric(gsub("X", "", heure))
+  )
+```
+
+```{r}
+classement_horaire <- df_long |> 
+  group_by(heure) |> 
+  summarise(
+    moyenne_passages = mean(passages, na.rm = TRUE)
+  ) |> 
+  arrange(desc(moyenne_passages)) 
+print(head(classement_horaire, 5))
+```
+
+7. Utiliser stringr et les regex pour convertir la colonne heure en variable numérique
+```{r}
+library(stringr)
+library(dplyr)
+
+df_long <- df_long |> 
+  mutate(heure_clean = str_extract(heure, "\\d+"),
+    
+    heure_num = as.numeric(heure_clean)
+  ) |> 
+  select(-heure, -heure_clean) |> 
+  rename(heure = heure_num)
+```
+
+```{r}
+df_long |> 
+  group_by(heure) |> 
+  summarise(moyenne = mean(passages, na.rm = TRUE)) |> 
+  arrange(desc(moyenne))
+```
 
