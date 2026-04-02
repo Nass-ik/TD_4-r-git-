@@ -186,3 +186,46 @@ ggplot(df_graph, aes(x = heure, y = moyenne)) +
   theme_minimal()
 ```
 
+9. Séparer les éléments de la colonne Boucle de comptage pour que le numéro, le nom de 
+la boucle et sa direction (nord, sud etc) soient renseignées dans trois nouvelles colonnes 
+distinctes numero, boucle et direction. Aidezvous de stringr et dplyr::separate_.... 
+Quelle est la direction comptant le plus de trajet ?
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(stringr)
+
+df_sep <- df_velo_clean |> 
+  # 1. On coupe la VRAIE colonne qui contient le tiret
+  separate_wider_delim(
+    cols = boucle_libelle, 
+    delim = " - ", 
+    names = c("numero", "reste"),
+    too_many = "merge"
+  ) |> 
+  
+  # 2. On sépare le nom et la direction
+  separate_wider_delim(
+    cols = reste, 
+    delim = " vers ", 
+    names = c("boucle", "direction"),
+    too_few = "align_start"
+  ) |> 
+  
+  # 3. Petit nettoyage de précaution
+  mutate(across(c(numero, boucle, direction), str_trim))
+
+# Vérif
+head(df_sep |> select(numero, boucle, direction))
+```
+
+```{r}
+classement_direction <- df_sep |> 
+  group_by(direction) |> 
+  summarise(total_trajets = sum(total, na.rm = TRUE)) |> 
+  arrange(desc(total_trajets))
+
+print(classement_direction)
+```
+
