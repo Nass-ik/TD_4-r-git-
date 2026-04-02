@@ -229,3 +229,84 @@ classement_direction <- df_sep |>
 print(classement_direction)
 ```
 
+10. Calculer un flux net entre les deux directions par tranche horaire et par jour. On commencera 
+par sélectionner uniquement nos colonnes d’intérêt. Visualiser la distribution de ces flux nets 
+par jour et par tranche horaire (deux graphiques)
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(lubridate) # Utile si on veut le jour de la semaine
+
+# 1. Préparation des données
+df_flux <- df_sep |> 
+  select(jour, direction, starts_with("X")) |> 
+  
+  # On pivote les heures (comme à la question 7)
+  pivot_longer(
+    cols = starts_with("X"),
+    names_to = "heure",
+    values_to = "passages"
+  ) |> 
+  
+  # On nettoie l'heure pour qu'elle soit numérique
+  mutate(
+    heure = as.numeric(str_extract(heure, "\\d+")),
+    jour = as.Date(jour)
+  ) |> 
+  
+  # On pivote les directions en colonnes pour pouvoir faire la soustraction
+  pivot_wider(
+    names_from = direction,
+    values_from = passages,
+    values_fill = 0 
+  ) |> 
+  
+  # Calcul du flux net (Choix arbitraire : Sud moins Nord)
+  mutate(flux_net = Sud - Nord)
+```
+
+```{r}
+graph_heure <- ggplot(df_flux, aes(x = factor(heure), y = flux_net)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7, outlier.color = "red", outlier.size = 1) +
+  
+  geom_hline(yintercept = 0, color = "darkred", linetype = "dashed", size = 1) +
+  labs(
+    title = "Distribution du flux net horaire (Sud - Nord)",
+    subtitle = "Au-dessus de 0 : Tendance Sud | En-dessous de 0 : Tendance Nord",
+    x = "Heure de la journée",
+    y = "Flux net (Passages)"
+  ) +
+  theme_minimal()
+
+print(graph_heure)
+```
+Le matin (8h) : La boîte plonge nettement en dessous de la ligne rouge (zéro). Le flux net est donc négatif. Mathématiquement, cela signifie que le trafic vers le Nord est supérieur au trafic vers le Sud. La grande migration du matin se fait donc vers le Nord.
+
+Le soir (17h - 18h) : C'est l'exact opposé. Les boîtes s'envolent au-dessus de la ligne rouge. Le flux net est très positif, ce qui signifie que la majorité des cyclistes se dirigent vers le Sud pour rentrer chez eux.
+
+Conclusion géographique : Sur ce point de comptage spécifique, on peut déduire qu'une grande partie des cyclistes habitent plutôt au Sud de la Loire (ou de l'île de Nantes) et travaillent ou étudient au Nord du Pont de la Madeleine.
+
+```{r}
+# On ajoute le jour de la semaine
+df_flux <- df_flux |> 
+  mutate(jour_semaine = wday(jour, label = TRUE, abbr = FALSE, week_start = 1))
+
+graph_jour <- ggplot(df_flux, aes(x = jour_semaine, y = flux_net)) +
+  geom_boxplot(fill = "lightgreen", alpha = 0.7) +
+  geom_hline(yintercept = 0, color = "darkred", linetype = "dashed", size = 1) +
+  labs(
+    title = "Distribution du flux net horaire selon le jour de la semaine",
+    x = "Jour de la semaine",
+    y = "Flux net horaire moyen (Sud - Nord)"
+  ) +
+  theme_minimal()
+
+print(graph_jour)
+```
+L'équilibre journalier : Pour presque tous les jours, la médiane (le trait noir au milieu de la boîte) est très proche de la ligne rouge. C'est parfaitement logique : les gens qui partent travailler le matin rentrent le soir, le flux net sur la journée entière s'annule presque.
+
+Les extrêmes (les points isolés) : On voit très bien les points qui s'envolent très haut ou très bas du lundi au vendredi (ce sont nos heures de pointe à 8h et 18h).
+
+Le week-end (Samedi / Dimanche) : Les boîtes sont plus petites et il y a beaucoup moins de points extrêmes. La circulation est plus "douce", étalée sur la journée pour les loisirs ou les courses, sans ce grand mouvement de balancier pendulaire massif des jours de semaine.
